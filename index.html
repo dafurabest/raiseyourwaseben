@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>はとっち育成ゲーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&family=Shippori+Mincho:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue: #5b8fd4;
+  --blue-light: #e8f0fb;
+  --blue-dark: #2c5fa8;
+  --gray: #7a8fa6;
+  --text: #1e3a5f;
+  --text-muted: #7090b0;
+  --border: #c2d5ee;
+  --white-dove: #f5f8ff;
+  --feather: #d4e2f5;
+  --font-main: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', sans-serif;
+  --font-title: 'Shippori Mincho', 'Hiragino Mincho ProN', serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-main);
+  background: #eef3fc;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bg-feathers { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+.bg-feather { position: absolute; top: -30px; opacity: 0.15; animation: bgfall linear infinite; }
+@keyframes bgfall { to { transform: translateY(110vh) rotate(540deg); opacity:0; } }
+
+.screen { display: none; position: relative; z-index: 1; }
+.screen.active { display: flex; flex-direction: column; align-items: center; }
+
+/* ---- NAME SCREEN ---- */
+#screen-name {
+  min-height: 100vh; justify-content: center;
+  gap: 18px; padding: 2rem; text-align: center;
+}
+.title-logo {
+  font-family: var(--font-title);
+  font-size: 46px; letter-spacing: 3px; color: var(--blue-dark);
+  text-shadow: 3px 3px 0px #a8c4e8, 5px 5px 0px rgba(44,95,168,0.15);
+  animation: floatY 3s ease-in-out infinite;
+}
+@keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.subtitle { font-size: 13px; color: var(--text-muted); letter-spacing: 2px; }
+
+/* ---- Canvas character preview ---- */
+.preview-char-wrap {
+  width: 142px; height: 142px;
+  display: flex; align-items: center; justify-content: center;
+  animation: floatY 3s ease-in-out infinite;
+  filter: drop-shadow(0 8px 16px rgba(44,95,168,0.22));
+}
+.char-canvas-main {
+  image-rendering: pixelated;
+}
+
+.name-card {
+  background: white; border-radius: 20px; padding: 20px 28px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(44,95,168,0.08);
+  display: flex; flex-direction: column; gap: 12px; width: 280px;
+}
+.name-label { font-size: 13px; color: var(--text-muted); }
+.name-input {
+  border: 1.5px solid var(--border); border-radius: 12px;
+  padding: 10px 16px; font-size: 18px; text-align: center;
+  color: var(--text); outline: none; width: 100%; font-family: inherit;
+  transition: border-color 0.2s;
+}
+.name-input:focus { border-color: var(--blue); }
+.start-btn {
+  background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+  color: white; border: none; border-radius: 14px;
+  padding: 12px; font-size: 16px; cursor: pointer;
+  font-family: var(--font-title); letter-spacing: 2px;
+  box-shadow: 0 4px 16px rgba(44,95,168,0.25);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(44,95,168,0.35); }
+.start-btn:active { transform: scale(0.97); }
+
+/* ---- GAME SCREEN ---- */
+#screen-game {
+  width: 100%; max-width: 460px; min-height: 100vh;
+  padding: 1rem; gap: 10px; align-items: stretch;
+}
+.game-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 0 6px; }
+.char-name-badge { font-family: var(--font-title); font-size: 24px; font-weight: bold; color: var(--blue-dark); letter-spacing: 2px; }
+.stage-badge {
+  font-size: 11px; background: var(--blue-light);
+  color: var(--blue-dark); padding: 3px 10px; border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+/* Character display */
+.char-display {
+  background: white; border-radius: 22px; border: 1px solid var(--border);
+  padding: 12px 14px; display: flex; align-items: flex-end; gap: 12px;
+  box-shadow: 0 4px 20px rgba(44,95,168,0.07);
+  min-height: 160px;
+}
+.char-img-wrap {
+  position: relative; flex-shrink: 0;
+  width: 110px; height: 148px;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.char-sprite-canvas {
+  width: 110px;
+  image-rendering: pixelated;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+  position: absolute; bottom: 0;
+}
+.char-sprite-canvas.bounce { animation: bounce 0.35s ease; }
+@keyframes bounce {
+  0%   { transform: translateY(0) scale(1,1); }
+  30%  { transform: translateY(-12px) scale(0.95,1.08); }
+  60%  { transform: translateY(0) scale(1.06,0.94); }
+  80%  { transform: translateY(-4px) scale(0.98,1.03); }
+  100% { transform: translateY(0) scale(1,1); }
+}
+.char-sprite-canvas.shake { animation: shake 0.4s ease; }
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-5px) rotate(-2deg)}
+  40%{transform:translateX(5px) rotate(2deg)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+.mood-dot {
+  position: absolute; bottom: 6px; right: 0px;
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid white; transition: background 0.5s; z-index: 2;
+}
+.char-right { flex: 1; display: flex; flex-direction: column; gap: 8px; padding-bottom: 4px; }
+.speech-bubble {
+  background: var(--blue-light); border-radius: 16px 16px 16px 4px;
+  padding: 10px 14px; font-size: 13px; color: var(--text);
+  border: 1px solid var(--border); min-height: 56px;
+  line-height: 1.75; transition: opacity 0.22s; flex: 1;
+  position: relative;
+}
+
+/* Stats */
+.stats-row { display: flex; gap: 8px; }
+.stat-pill {
+  flex: 1; background: white; border: 1px solid var(--border);
+  border-radius: 12px; padding: 8px; text-align: center;
+}
+.stat-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+.stat-bar { height: 5px; background: var(--feather); border-radius: 3px; overflow: hidden; margin-bottom: 3px; }
+.stat-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.stat-val { font-size: 11px; color: var(--text); font-weight: 500; }
+
+/* Sections */
+.section { background: white; border-radius: 16px; border: 1px solid var(--border); padding: 12px 14px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.section-title { font-family: var(--font-title); font-size: 13px; color: var(--text-muted); letter-spacing: 2px; }
+.section-count { font-size: 11px; color: var(--blue); background: var(--blue-light); padding: 2px 8px; border-radius: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+.chip {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--blue-light); border: 1px solid var(--border);
+  border-radius: 14px; padding: 3px 10px 3px 8px;
+  font-size: 12px; color: var(--text); animation: chipPop 0.2s ease;
+}
+@keyframes chipPop { from{transform:scale(0)} to{transform:scale(1)} }
+.chip-word { font-weight: 600; }
+.chip-sep { color: var(--border); }
+.chip-meaning { font-size: 10px; color: var(--text-muted); max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Inputs */
+.teach-row { display: flex; gap: 6px; }
+.teach-input {
+  flex: 1; border: 1px solid var(--border); border-radius: 10px;
+  padding: 7px 12px; font-size: 13px; color: var(--text);
+  background: white; outline: none; font-family: inherit; min-width: 0;
+  transition: border-color 0.2s;
+}
+.teach-input:focus { border-color: var(--blue); }
+.teach-btn {
+  background: var(--blue); color: white; border: none;
+  border-radius: 10px; padding: 7px 14px; font-size: 13px;
+  cursor: pointer; font-family: var(--font-title); white-space: nowrap;
+}
+.teach-btn:hover { background: var(--blue-dark); }
+.talk-row { display: flex; gap: 8px; }
+.talk-input {
+  flex: 1; border: 1px solid var(--border); border-radius: 20px;
+  padding: 9px 16px; font-size: 14px; color: var(--text);
+  background: white; outline: none; font-family: inherit; transition: border-color 0.2s;
+}
+.talk-input:focus { border-color: var(--blue); }
+.talk-btn {
+  background: var(--blue-dark); color: white; border: none;
+  border-radius: 20px; padding: 9px 20px; font-size: 14px;
+  cursor: pointer; font-family: var(--font-title);
+}
+.talk-btn:hover { background: #1a3d7a; }
+
+/* Actions */
+.actions { display: flex; gap: 8px; }
+.action-btn {
+  flex: 1; background: white; border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px 4px; cursor: pointer;
+  text-align: center; color: var(--text); transition: background 0.15s, transform 0.1s;
+}
+.action-btn:hover { background: var(--blue-light); transform: translateY(-2px); }
+.action-btn:active { transform: scale(0.96); }
+.action-icon { font-size: 20px; display: block; }
+.action-label { font-family: var(--font-title); font-size: 11px; color: var(--text-muted); margin-top: 3px; letter-spacing: 1px; }
+.log-line { font-size: 11px; color: var(--text-muted); text-align: center; min-height: 16px; transition: opacity 0.3s; }
+
+/* Feather burst */
+.feather-burst {
+  position: fixed; pointer-events: none; z-index: 999; font-size: 18px;
+  animation: burstFly 1.2s ease-out forwards;
+}
+@keyframes burstFly {
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.3) rotate(360deg)}
+}
+
+/* Idle float animation for sprite */
+@keyframes idleFloat {
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-5px)}
+}
+.char-sprite-canvas.idle { animation: idleFloat 2.8s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="bg-feathers" id="bg-feathers"></div>
+
+<!-- NAME SCREEN -->
+<div class="screen active" id="screen-name">
+  <div class="title-logo">🕊️ わせべん</div>
+  <div class="subtitle">言葉を食べて育つ不思議な鳩</div>
+  <div class="preview-char-wrap">
+    <canvas id="preview-canvas" class="char-canvas-main" width="64" height="64"></canvas>
+  </div>
+  <div class="name-card">
+    <div class="name-label">この子の名前を決めてあげてね</div>
+    <input class="name-input" id="name-input" placeholder="なまえ..." maxlength="8">
+    <button class="start-btn" id="start-btn">いっしょに育てる ✨</button>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="screen" id="screen-game">
+  <div class="game-header">
+    <div class="char-name-badge" id="g-name">？</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button id="btn-bgm" title="BGM" style="background:white;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;cursor:pointer;color:var(--text-muted);font-family:var(--font-title);transition:background 0.15s;">🎵 OFF</button>
+      <div class="stage-badge" id="g-stage">🥚 たまご期</div>
+      <div style="font-size:11px;color:var(--text-muted)" id="g-age">0日目</div>
+    </div>
+  </div>
+
+  <div class="char-display">
+    <div class="char-img-wrap">
+      <canvas id="char-canvas" class="char-sprite-canvas idle" width="44" height="56" title="なでる"></canvas>
+      <div class="mood-dot" id="mood-dot" style="background:#81c784"></div>
+    </div>
+    <div class="char-right">
+      <div class="speech-bubble" id="speech-text">...</div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-pill">
+      <div class="stat-label">📖 語彙量</div>
+      <div class="stat-bar"><div class="stat-fill" id="bar-vocab" style="background:var(--blue);width:0%"></div></div>
+      <div class="stat-val" id="val-vocab">0語</div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-label">🌀 混乱度</div>
+      <div class="stat-bar"><div class="stat-fill" id="bar-chaos" style="background:#90afd4;width:0%"></div></div>
+      <div class="stat-val" id="val-chaos">おだやか</div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-label">🎲 きまぐれ</div>
+      <div class="stat-bar"><div class="stat-fill" id="bar-whim" style="background:#ffb74d;width:50%"></div></div>
+      <div class="stat-val" id="val-whim">ふつう</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">おぼえた ことば</div>
+      <div class="section-count" id="vocab-count">0語</div>
+    </div>
+    <div class="chips" id="vocab-chips">
+      <span style="font-size:12px;color:var(--text-muted);opacity:0.6">まだ何も知らない…</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">ことばを おしえる</div>
+    </div>
+    <div class="teach-row">
+      <input class="teach-input" id="word-input" placeholder="ことば（例：さくら）" style="flex:1.1">
+      <input class="teach-input" id="meaning-input" placeholder="意味（例：春の花）" style="flex:2">
+      <button class="teach-btn" id="teach-btn">おしえる</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">はなしかける</div>
+    </div>
+    <div class="talk-row">
+      <input class="talk-input" id="talk-input" placeholder="なんか言ってみよう…">
+      <button class="talk-btn" id="talk-btn">送る</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="action-btn" id="btn-feed"><span class="action-icon">🌾</span><span class="action-label">えさ</span></button>
+    <button class="action-btn" id="btn-sleep"><span class="action-icon">💤</span><span class="action-label">ねかす</span></button>
+    <button class="action-btn" id="btn-play"><span class="action-icon">🍃</span><span class="action-label">あそぶ</span></button>
+    <button class="action-btn" id="btn-reset"><span class="action-icon">🔄</span><span class="action-label">リセット</span></button>
+    <button class="action-btn" id="btn-settings"><span class="action-icon">⚙️</span><span class="action-label">せってい</span></button>
+  </div>
+  <div class="log-line" id="log-line"></div>
+
+  <div id="ai-suggest-bar" style="display:none; background:white; border:1px solid var(--border); border-radius:14px; padding:10px 14px; font-size:12px; color:var(--text-muted);">
+    <span style="color:var(--blue);font-family:var(--font-title);">✨ AIの提案：</span>
+    <span id="ai-suggest-text"></span>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-overlay" style="display:none; position:fixed; inset:0; background:rgba(30,58,95,0.35); z-index:100; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:24px; padding:28px; width:320px; border:1px solid var(--border); box-shadow:0 8px 40px rgba(44,95,168,0.18); display:flex; flex-direction:column; gap:16px;">
+    <div style="font-family:var(--font-title); font-size:20px; color:var(--blue-dark); text-align:center;">⚙️ せってい</div>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <label style="font-size:12px;color:var(--text-muted);font-family:var(--font-title);">Gemini API キー</label>
+      <input id="api-key-input" type="password" placeholder="AIzaSy..." style="border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;font-family:inherit;transition:border-color 0.2s;">
+      <div style="font-size:11px;color:var(--text-muted);">キーは端末内にのみ保存されます。<br><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--blue);">Google AI Studioで取得 →</a></div>
+    </div>
+    <div id="api-status" style="font-size:12px;text-align:center;min-height:18px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button id="settings-cancel" style="flex:1;border:1px solid var(--border);border-radius:10px;padding:9px;cursor:pointer;background:white;color:var(--text-muted);font-family:inherit;">キャンセル</button>
+      <button id="settings-save" style="flex:1;background:var(--blue);color:white;border:none;border-radius:10px;padding:9px;cursor:pointer;font-family:inherit;">保存する</button>
+    </div>
+    <button id="settings-clear-key" style="border:none;background:none;color:#e57373;font-size:12px;cursor:pointer;font-family:inherit;">APIキーを削除</button>
+  </div>
+</div>
+
+<script>
+// ===== PIGEON PIXEL ART RENDERER =====
+// Palette
+const COL = {
+  W: '#dde4ee',  // light gray body
+  L: '#f0f4fa',  // highlight white
+  G: '#9aaabb',  // medium gray wing
+  D: '#6a7a8a',  // dark gray wing accent
+  B: '#1a2a40',  // dark (outlines)
+  O: '#d06020',  // orange beak
+  F: '#e07028',  // orange feet
+  R: '#cc3333',  // eye ring
+  Y: '#ffffaa',  // eye highlight
+  T: '#b89050',  // tan iridescence
+  N: '#507840',  // green iridescence
+  K: '#6858a0',  // purple iridescence
+  P: '#e8a0a0',  // pink (blush)
+};
+
+// 20x24 grid sprites for each stage
+const SPRITES = {
+  egg: [
+    '____________________',
+    '____________________',
+    '______LLLLLL________',
+    '_____LWWWWWWL_______',
+    '____LWWWWWWWWL______',
+    '____LWWWWWWWWL______',
+    '____LWWWWWWWWL______',
+    '____LWWWWWWWWL______',
+    '____LWWWWWWWWL______',
+    '____LWWWWWWWWL______',
+    '____LWWWWWWWWL______',
+    '_____LWWWWWWL_______',
+    '______LLLLLL________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+  ],
+  chick: [
+    '____________________',
+    '_______LLLL_________',
+    '_____LLWWWWLL_______',
+    '____LWWWWWWWWL______',
+    '____LWWRYWWWWL______',
+    '____LWWWWWWWWL______',
+    '____LWWWOOOWWL______',
+    '_____LTNKWWWL_______',
+    '______LLWWWLL_______',
+    '______LGGGGGL_______',
+    '_____LGGDDGGGL______',
+    '______LGGGGGL_______',
+    '______LWWWWWL_______',
+    '_______LLLLL________',
+    '_______LOFFL________',
+    '______LOFFOFFL______',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+  ],
+  normal: [
+    '____________________',
+    '______BBBBB_________',
+    '_____BLLLLLB________',
+    '____BLWWWWWWB_______',
+    '____BLWWWWWWB_______',
+    '____BLWWWWWWB_______',
+    '____BLWWWWWWWB______',
+    '____BLWWWWWWWB______',
+    '_____BLWWWWWB_______',
+    '_____BBBBBBBBB______',
+    '___BGGGGGGGGGGB_____',
+    '__BGGGDDDDGGGGGB____',
+    '__BGGGDDDDGGGGGB____',
+    '__BGGGGGGGGGGGB_____',
+    '___BLWWWWWWWWB______',
+    '____BLWWWWWB________',
+    '_____BBBBBBB________',
+    '______BFFBB_________',
+    '_____BFFBBFFB_______',
+    '____BFF__BFFB_______',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+  ],
+  grown: [
+    '____BBBBBB__________',
+    '___BLLLLLLLB________',
+    '__BLWWWWWWWWB_______',
+    '__BLWWWWWWWWB_______',
+    '__BLWWWWWWWWWB______',
+    '__BLWWWWWWWWWB______',
+    '__BLWWWWWWWWWWB_____',
+    '__BLWWWWWWWWWWB_____',
+    '___BLLLLLLLLLLB_____',
+    '__BGGGGGGGGGGGGB____',
+    '_BGGGDDDDDDGGGGGB___',
+    '_BGGDDDDDDDDGGGGB___',
+    '_BGGGDDDDDDGGGGGB___',
+    '_BGGGGGGGGGGGGGB____',
+    '__BLWWWWWWWWWB______',
+    '___BLWWWWWWB________',
+    '____BBBBBBB_________',
+    '____BFFBBFFB________',
+    '___BFFB_BFFB________',
+    '___________________.',
+    '____________________',
+    '____________________',
+    '____________________',
+    '____________________',
+  ],
+};
+
+// Mood-specific eye/expression pixel maps (offsets into sprite)
+// We draw them with canvas API on top of the sprite
+
+function drawSprite(ctx, sprite, scale) {
+  sprite.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const c = row[x];
+      if (COL[c]) {
+        ctx.fillStyle = COL[c];
+        ctx.fillRect(x * scale, y * scale, scale, scale);
+      }
+    }
+  });
+}
+
+function drawHatoSprite(canvas, mood, stageNum) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const scale = Math.floor(canvas.width / 20);
+
+  // Pick base sprite by stage
+  let baseSprite;
+  if (stageNum === 0) baseSprite = SPRITES.egg;
+  else if (stageNum === 1) baseSprite = SPRITES.chick;
+  else if (stageNum >= 3) baseSprite = SPRITES.grown;
+  else baseSprite = SPRITES.normal;
+
+  // Clone sprite for modification
+  let sprite = baseSprite.map(r => r);
+
+  // For egg/chick, no mood overlay needed
+  if (stageNum <= 1) {
+    drawSprite(ctx, sprite, scale);
+    return;
+  }
+
+  drawSprite(ctx, sprite, scale);
+
+  // Mood overlays using canvas drawing on normal/grown
+  const s = scale;
+  const isGrown = stageNum >= 3;
+  // Eye positions for normal: row 4-5, col 7-8 (right side = head)
+  // For grown: row 3-4, col 7-8
+  const eyeRow = isGrown ? 3 : 4;
+  const eyeCol = isGrown ? 7 : 7;
+  const ex = eyeCol * s, ey = eyeRow * s;
+
+  if (mood === 'normal') {
+    // Default eye: red ring + dark pupil
+    ctx.fillStyle = COL.R;
+    ctx.beginPath(); ctx.arc(ex + s, ey + s*0.8, s*0.85, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = COL.B;
+    ctx.beginPath(); ctx.arc(ex + s, ey + s*0.8, s*0.45, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = COL.Y;
+    ctx.beginPath(); ctx.arc(ex + s*0.7, ey + s*0.4, s*0.22, 0, Math.PI*2); ctx.fill();
+  } else if (mood === 'happy') {
+    // ^ arc eye
+    ctx.strokeStyle = COL.B; ctx.lineWidth = s * 0.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(ex + s, ey + s*1.1, s*0.8, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+    // Blush
+    ctx.fillStyle = 'rgba(220,80,80,0.25)';
+    ctx.beginPath(); ctx.ellipse(ex + s*1.8, ey + s*1.6, s*0.9, s*0.5, 0, 0, Math.PI*2); ctx.fill();
+  } else if (mood === 'sleep') {
+    // --- eye (closed)
+    ctx.strokeStyle = COL.B; ctx.lineWidth = s * 0.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(ex + s*0.2, ey + s*0.8); ctx.lineTo(ex + s*1.8, ey + s*0.8); ctx.stroke();
+    // zzz
+    ctx.fillStyle = 'rgba(44,58,100,0.55)';
+    ctx.font = `bold ${s*1.4}px monospace`;
+    ctx.fillText('z', ex + s*2.5, ey - s*0.5);
+    ctx.font = `bold ${s*1.0}px monospace`;
+    ctx.fillText('z', ex + s*3.5, ey - s*1.2);
+  } else if (mood === 'surprised') {
+    // O eye (wide open)
+    ctx.fillStyle = COL.R;
+    ctx.beginPath(); ctx.arc(ex + s, ey + s*0.8, s*1.1, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = COL.B;
+    ctx.beginPath(); ctx.arc(ex + s, ey + s*0.8, s*0.6, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = COL.Y;
+    ctx.beginPath(); ctx.arc(ex + s*0.65, ey + s*0.4, s*0.28, 0, Math.PI*2); ctx.fill();
+    // Sweat drop
+    ctx.fillStyle = 'rgba(100,160,220,0.7)';
+    ctx.beginPath();
+    ctx.arc(ex + s*2.8, ey - s*0.2, s*0.5, 0, Math.PI*2); ctx.fill();
+  } else if (mood === 'confused') {
+    // Swirl eye
+    ctx.strokeStyle = COL.B; ctx.lineWidth = s * 0.5;
+    ctx.beginPath();
+    ctx.arc(ex + s, ey + s*0.8, s*0.9, 0, Math.PI*1.7); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(ex + s, ey + s*0.8, s*0.45, Math.PI*0.3, Math.PI*2); ctx.stroke();
+    // Question mark
+    ctx.fillStyle = COL.D;
+    ctx.font = `bold ${s*1.6}px monospace`;
+    ctx.fillText('?', ex + s*2.2, ey - s*0.3);
+  }
+}
+
+// Draw onto canvas with given size
+function renderHato(canvasId, mood, stageNum, w, h) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  canvas.width = w; canvas.height = h;
+  drawHatoSprite(canvas, mood, stageNum);
+}
+
+// ===== GAME STATE =====
+const SAVE_KEY = 'hatochi_v1';
+let S = { name:'', age:0, vocab:[], chaos:0, whim:50, hunger:80 };
+function save() { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }
+function load() { try { const d=localStorage.getItem(SAVE_KEY); if(d) S=JSON.parse(d); } catch(e){} }
+
+const STAGES = [
+  {n:'🥚 たまご期', min:0, stageNum:0},
+  {n:'🐣 ひな期',   min:5, stageNum:1},
+  {n:'🕊️ こども期', min:15, stageNum:2},
+  {n:'🦅 せいちょう期', min:30, stageNum:3},
+  {n:'👑 かんせい期', min:50, stageNum:4}
+];
+function getStage() {
+  let st = STAGES[0];
+  for(const s of STAGES){ if(S.vocab.length >= s.min) st = s; }
+  return st;
+}
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+// ---- Sprite control ----
+let currentMood = 'normal';
+let idleTimer = null;
+
+function setSprite(mood, animClass) {
+  const el = document.getElementById('char-canvas');
+  currentMood = mood;
+  const stage = getStage();
+  renderHato('char-canvas', mood, stage.stageNum, 44, 56);
+  el.className = 'char-sprite-canvas';
+  if(animClass) {
+    el.classList.add(animClass);
+    el.addEventListener('animationend', () => {
+      el.className = 'char-sprite-canvas idle';
+    }, {once: true});
+  } else {
+    el.classList.add('idle');
+  }
+  if(idleTimer) clearTimeout(idleTimer);
+  if(mood !== 'sleep') {
+    idleTimer = setTimeout(() => {
+      const auto = S.chaos > 60 ? 'confused' : 'normal';
+      currentMood = auto;
+      renderHato('char-canvas', auto, getStage().stageNum, 44, 56);
+    }, 3000);
+  }
+}
+
+// ---- Speech ----
+function speak(text, mood, animClass) {
+  const el = document.getElementById('speech-text');
+  el.style.opacity = '0';
+  setTimeout(() => { el.textContent = text; el.style.opacity = '1'; }, 200);
+  if(mood) setSprite(mood, animClass);
+}
+
+function buildSpeech() {
+  const v = S.vocab;
+  if(v.length===0) return rnd(['…クッ…','ポッポ…','（じっとしてる）','クー…？']);
+  const sh=[...v].sort(()=>Math.random()-0.5);
+  const a=sh[0], b=sh[1]||sh[0], c=sh[2]||sh[0];
+  const low=[
+    ()=>`${a.word}って${a.meaning}のことでしょ？クッ`,
+    ()=>`${a.word}…${a.word}…（むにゃむにゃ）`,
+    ()=>`きょう${a.word}のこと考えてたんだポッ`,
+    ()=>`${a.word}が${a.meaning}なら、${b.word}は？ポー`,
+  ];
+  const med=[...low,
+    ()=>`${a.word}と${b.word}って関係ある？クックッ`,
+    ()=>`ねえ、${a.meaning}って${b.word}みたいだと思わない？クー`,
+    ()=>`${a.word}の${a.meaning}が${b.word}だったらポッポ！`,
+  ];
+  const high=[...med,
+    ()=>`${a.word}が${b.meaning}で${c.word}なんだよ！クッ！クッ！`,
+    ()=>`${a.meaning}！${b.meaning}！${c.word}ーーポポポ！！`,
+    ()=>`もしかして${a.word}って${b.meaning}の${c.word}じゃ？？ポー！`,
+    ()=>`${a.word}${b.word}${c.word}…全部つながってるクー`,
+  ];
+  const pool = S.chaos>60 ? high : S.chaos>30 ? med : low;
+  return rnd(pool)();
+}
+
+function getSpeechMood() {
+  return S.chaos > 60 ? 'confused' : 'normal';
+}
+
+// ---- Teach ----
+function teachWord(word, meaning) {
+  word=word.trim(); meaning=meaning.trim();
+  if(!word) return false;
+  if(S.vocab.find(v=>v.word===word)){ speak(`${word}はもう知ってる！クッ`, 'surprised', 'bounce'); return false; }
+  S.vocab.push({word, meaning:meaning||'？'});
+  S.chaos=Math.min(100,S.chaos+4);
+  S.whim=Math.min(100,S.whim+2);
+  save(); renderVocab(); updateStats();
+  const lines=[
+    `${word}…おぼえた！！ポッポ！`,
+    `${word}ってなんか${meaning||'ふしぎ'}だねクー`,
+    `${word}！${word}！（くりかえすよ）`,
+    `${meaning||word}…（じーっと考える）クッ`,
+    `へえ…${word}が${meaning||'そういうもの'}なんだ…ポー`,
+  ];
+  speak(rnd(lines), 'happy', 'bounce');
+  return true;
+}
+
+// ---- Render ----
+function renderVocab() {
+  const el=document.getElementById('vocab-chips');
+  document.getElementById('vocab-count').textContent=S.vocab.length+'語';
+  if(S.vocab.length===0){
+    el.innerHTML='<span style="font-size:12px;color:var(--text-muted);opacity:0.6">まだ何も知らない…</span>';
+    return;
+  }
+  el.innerHTML=S.vocab.slice(-16).map(v=>
+    `<div class="chip" title="${v.word}：${v.meaning}"><span class="chip-word">${v.word}</span><span class="chip-sep">｜</span><span class="chip-meaning">${v.meaning}</span></div>`
+  ).join('');
+}
+
+function updateStats() {
+  document.getElementById('bar-vocab').style.width=Math.min(100,(S.vocab.length/60)*100)+'%';
+  document.getElementById('val-vocab').textContent=S.vocab.length+'語';
+  document.getElementById('bar-chaos').style.width=S.chaos+'%';
+  document.getElementById('val-chaos').textContent=['おだやか','ざわざわ','混乱中','カオス！','暴走中💥'][Math.min(4,Math.floor(S.chaos/22))];
+  document.getElementById('bar-whim').style.width=S.whim+'%';
+  document.getElementById('val-whim').textContent=['しずか','ふつう','きまぐれ','超気まぐれ','フリー🎲'][Math.min(4,Math.floor(S.whim/22))];
+  document.getElementById('g-stage').textContent=getStage().n;
+  document.getElementById('g-age').textContent=Math.floor(S.age)+'日目';
+  const dot=document.getElementById('mood-dot');
+  dot.style.background=S.chaos>70?'#e53935':S.chaos>40?'#90afd4':'#81c784';
+  if(currentMood==='normal'||currentMood==='confused') {
+    const auto = S.chaos>60?'confused':'normal';
+    currentMood = auto;
+    renderHato('char-canvas', auto, getStage().stageNum, 44, 56);
+  }
+}
+
+function log(msg) {
+  const el=document.getElementById('log-line');
+  el.style.opacity='1'; el.textContent=msg;
+  setTimeout(()=>{ el.style.opacity='0'; },2800);
+}
+
+function burstFeathers(x, y, n) {
+  for(let i=0;i<n;i++){
+    const p=document.createElement('div');
+    p.className='feather-burst';
+    p.textContent=rnd(['🕊️','🪶','✦','❋']);
+    const angle=Math.random()*Math.PI*2, dist=40+Math.random()*80;
+    p.style.cssText=`left:${x}px;top:${y}px;--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px;`;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),1400);
+  }
+}
+
+function spawnBgFeather(){
+  const c=document.getElementById('bg-feathers');
+  const p=document.createElement('div');
+  p.className='bg-feather';
+  p.textContent=rnd(['🪶','🕊️','✦']);
+  p.style.left=Math.random()*100+'%';
+  p.style.fontSize=(10+Math.random()*14)+'px';
+  p.style.animationDuration=(7+Math.random()*9)+'s';
+  c.appendChild(p); setTimeout(()=>p.remove(),18000);
+}
+setInterval(spawnBgFeather, 2200);
+for(let i=0;i<4;i++) setTimeout(spawnBgFeather, i*400);
+
+// Age
+setInterval(()=>{
+  S.age+=1/288;
+  document.getElementById('g-age').textContent=Math.floor(S.age)+'日目';
+  if(Math.random()<0.02) save();
+},5000);
+
+// ---- Events ----
+document.getElementById('start-btn').addEventListener('click',()=>{
+  const name=document.getElementById('name-input').value.trim();
+  if(!name){ document.getElementById('name-input').focus(); return; }
+  S.name=name; save(); startGame();
+});
+document.getElementById('name-input').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('start-btn').click(); });
+
+document.getElementById('teach-btn').addEventListener('click',()=>{
+  const w=document.getElementById('word-input').value;
+  const m=document.getElementById('meaning-input').value;
+  if(teachWord(w,m)){
+    document.getElementById('word-input').value='';
+    document.getElementById('meaning-input').value='';
+    document.getElementById('word-input').focus();
+    log(`「${w.trim()}」をおぼえた！`);
+  }
+});
+['word-input','meaning-input'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('teach-btn').click(); });
+});
+
+document.getElementById('talk-btn').addEventListener('click',()=>{
+  const input=document.getElementById('talk-input').value.trim();
+  if(!input) return;
+  document.getElementById('talk-input').value='';
+  S.chaos=Math.min(100,S.chaos+2);
+  S.whim=Math.min(100,S.whim+3);
+  updateStats(); save();
+  if(S.vocab.length===0){
+    speak(rnd(['えっ…？クッ','...（きょとん）','ポッ…？']), 'surprised', 'bounce');
+  } else {
+    speak(buildSpeech(), getSpeechMood());
+  }
+});
+document.getElementById('talk-input').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('talk-btn').click(); });
+
+document.getElementById('char-canvas').addEventListener('click',e=>{
+  burstFeathers(e.clientX,e.clientY,5);
+  S.whim=Math.min(100,S.whim+4);
+  speak(rnd(['クッ♪','えへっ！ポッ','やめてクー','もっと！','クークー♪']), 'surprised', 'bounce');
+  updateStats(); save();
+  log('なでた♪');
+});
+
+document.getElementById('btn-feed').addEventListener('click',e=>{
+  burstFeathers(e.clientX,e.clientY,4);
+  S.chaos=Math.max(0,S.chaos-5);
+  speak(rnd(['もぐもぐ…おいしい！クッ','ありがとうポッポ♪','しあわせ！','もっとほしい〜クー']), 'happy', 'bounce');
+  updateStats(); save(); log('お腹が満たされた');
+});
+document.getElementById('btn-sleep').addEventListener('click',()=>{
+  S.chaos=Math.max(0,S.chaos-15);
+  speak(rnd(['zzz…（すやすや）クー','…おやすみ…ポッ','すぴー…']), 'sleep');
+  updateStats(); save(); log('少し落ち着いた');
+});
+document.getElementById('btn-play').addEventListener('click',e=>{
+  burstFeathers(e.clientX,e.clientY,8);
+  S.whim=Math.min(100,S.whim+12);
+  S.chaos=Math.min(100,S.chaos+6);
+  speak(rnd(['クックッ！たのしい！','ポポポポポ！','飛んだ〜！','クー！わーい！']), 'happy', 'bounce');
+  updateStats(); save(); log('一緒に遊んだ');
+});
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  if(confirm('最初からやり直しますか？（データが消えます）')){
+    localStorage.removeItem(SAVE_KEY); location.reload();
+  }
+});
+
+function startGame() {
+  document.getElementById('screen-name').classList.remove('active');
+  document.getElementById('screen-game').classList.add('active');
+  document.getElementById('g-name').textContent=S.name;
+  setSprite('normal');
+  renderVocab(); updateStats();
+  setTimeout(()=>speak(`${S.name}…それが私の名前なんだね、クッ`, 'happy', 'bounce'),600);
+}
+
+// ===== BGM =====
+let bgmOn = false;
+let bgmCtx = null;
+let bgmInterval = null;
+
+function createBgm() {
+  // Simple procedural melody using Web Audio API
+  if (!bgmCtx) {
+    bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+// Simple coo-like BGM using Web Audio
+function playBgmNote(freq, time, dur, vol=0.06) {
+  if (!bgmCtx) return;
+  const osc = bgmCtx.createOscillator();
+  const gain = bgmCtx.createGain();
+  osc.connect(gain); gain.connect(bgmCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, time);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.95, time + dur * 0.8);
+  gain.gain.setValueAtTime(0, time);
+  gain.gain.linearRampToValueAtTime(vol, time + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+  osc.start(time); osc.stop(time + dur + 0.01);
+}
+
+const bgmMelody = [
+  [523, 0.4], [440, 0.4], [392, 0.4], [349, 0.8],
+  [392, 0.4], [440, 0.4], [523, 0.8],
+  [587, 0.4], [523, 0.4], [440, 0.4], [392, 0.8],
+  [440, 0.4], [523, 0.4], [587, 0.8],
+];
+
+function scheduleBgm() {
+  if (!bgmCtx || !bgmOn) return;
+  let t = bgmCtx.currentTime + 0.1;
+  for (const [freq, dur] of bgmMelody) {
+    playBgmNote(freq, t, dur * 0.85);
+    t += dur;
+  }
+  // Also add soft coo bass
+  const bassNotes = [130, 146, 130, 117];
+  let bt = bgmCtx.currentTime + 0.1;
+  for (const freq of bassNotes) {
+    playBgmNote(freq, bt, 1.5, 0.03);
+    bt += 1.8;
+  }
+  const totalDur = bgmMelody.reduce((s,[,d])=>s+d,0);
+  bgmInterval = setTimeout(scheduleBgm, totalDur * 1000);
+}
+
+function toggleBgm() {
+  const btn = document.getElementById('btn-bgm');
+  if(bgmOn) {
+    bgmOn = false;
+    if(bgmInterval) clearTimeout(bgmInterval);
+    if(bgmCtx) { bgmCtx.suspend(); }
+    btn.textContent = '🎵 OFF';
+    btn.style.color = 'var(--text-muted)';
+    btn.style.background = 'white';
+  } else {
+    createBgm();
+    if(bgmCtx && bgmCtx.state === 'suspended') bgmCtx.resume();
+    bgmOn = true;
+    scheduleBgm();
+    btn.textContent = '🎵 ON';
+    btn.style.color = 'var(--blue-dark)';
+    btn.style.background = 'var(--blue-light)';
+  }
+}
+document.getElementById('btn-bgm').addEventListener('click', toggleBgm);
+
+// ===== GEMINI API =====
+const API_KEY_STORAGE = 'hatochi_gemini_key';
+let geminiKey = localStorage.getItem(API_KEY_STORAGE) || '';
+
+function hasApiKey() { return geminiKey.length > 10; }
+
+function updateApiIndicator() {
+  const btn = document.getElementById('btn-settings');
+  if(btn) btn.querySelector('.action-icon').textContent = hasApiKey() ? '⚙️✨' : '⚙️';
+}
+
+async function callGemini(prompt) {
+  if(!hasApiKey()) return null;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          contents: [{parts: [{text: prompt}]}],
+          generationConfig: {maxOutputTokens: 120, temperature: 0.95}
+        })
+      }
+    );
+    if(!res.ok) { console.warn('Gemini error', res.status); return null; }
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  } catch(e) { console.warn('Gemini fetch failed', e); return null; }
+}
+
+async function geminiSpeak() {
+  if(!hasApiKey() || S.vocab.length === 0) return;
+  const vocabList = S.vocab.slice(-20).map(v => `「${v.word}」(${v.meaning})`).join('、');
+  const chaosDesc = S.chaos > 60 ? 'とても混乱していて支離滅裂' : S.chaos > 30 ? '少し混乱気味' : 'おだやか';
+  const prompt = `あなたはかわいい鳩のキャラクター「${S.name}」です。ポッポ・クッ・クー などの鳩らしい鳴き声を語尾に入れます。
+覚えた言葉：${vocabList}
+現在の状態：${chaosDesc}、きまぐれ度${S.whim}%
+
+覚えた言葉の意味や組み合わせを使って、キャラクターらしい一言を日本語で言ってください。
+- 25文字以内
+- 語尾は「ポッポ」「クッ」「クー」「ポー」など鳩らしく
+- 混乱度が高いほど言葉の組み合わせがカオスに
+- 返答は一言だけ、地の文なし`;
+  const result = await callGemini(prompt);
+  if(result) speak(result, getSpeechMood());
+}
+
+async function geminiSuggestWords(word, meaning) {
+  if(!hasApiKey()) return;
+  const prompt = `「${word}」(意味：${meaning})という言葉を覚えたかわいいキャラクターに、関連する言葉を3つ提案してください。
+形式：単語1/意味1、単語2/意味2、単語3/意味3
+例：夕焼け/空が赤くなる夕方の現象、茜色/暗い赤みがかった色、黄昏/日が沈む薄暗い時間
+一行で返してください。他の説明は不要。`;
+  const result = await callGemini(prompt);
+  if(result) {
+    const bar = document.getElementById('ai-suggest-bar');
+    const txt = document.getElementById('ai-suggest-text');
+    txt.innerHTML = result.split('、').map(s => {
+      const [w, m] = s.split('/');
+      if(!w) return '';
+      return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--blue-light);border:1px solid var(--border);border-radius:12px;padding:2px 8px;margin:2px;cursor:pointer;font-size:12px;" onclick="quickTeach('${(w||'').trim()}','${(m||'').trim()}')">${(w||'').trim()}<span style="color:var(--border);font-size:10px;">｜</span><span style="color:var(--text-muted);font-size:10px;">${(m||'').trim()}</span></span>`;
+    }).join('');
+    bar.style.display = 'block';
+    setTimeout(() => { bar.style.display = 'none'; }, 12000);
+  }
+}
+
+function quickTeach(word, meaning) {
+  if(word && !S.vocab.find(v=>v.word===word)) {
+    teachWord(word, meaning);
+    log(`💡 「${word}」をおそわった！`);
+  }
+}
+
+// Settings
+function openSettings() {
+  const overlay = document.getElementById('settings-overlay');
+  overlay.style.display = 'flex';
+  const inp = document.getElementById('api-key-input');
+  inp.value = geminiKey;
+  document.getElementById('api-status').textContent = hasApiKey() ? '✅ APIキー設定済み' : '';
+}
+function closeSettings() {
+  document.getElementById('settings-overlay').style.display = 'none';
+}
+
+document.getElementById('btn-settings').addEventListener('click', openSettings);
+document.getElementById('settings-cancel').addEventListener('click', closeSettings);
+document.getElementById('settings-overlay').addEventListener('click', e => {
+  if(e.target === document.getElementById('settings-overlay')) closeSettings();
+});
+
+document.getElementById('settings-save').addEventListener('click', async () => {
+  const key = document.getElementById('api-key-input').value.trim();
+  const statusEl = document.getElementById('api-status');
+  if(!key) { statusEl.textContent = '❌ キーを入力してください'; return; }
+  statusEl.textContent = '🔄 確認中...';
+  const testRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({contents:[{parts:[{text:'hi'}]}], generationConfig:{maxOutputTokens:5}})
+    }
+  ).catch(() => null);
+
+  if(testRes && testRes.ok) {
+    geminiKey = key;
+    localStorage.setItem(API_KEY_STORAGE, key);
+    statusEl.textContent = '✅ 接続成功！AIが使えるようになりました';
+    updateApiIndicator();
+    setTimeout(closeSettings, 1200);
+    log('✨ AIモードON！');
+    speak(`${S.name}の言葉がもっと豊かになった気がする…！ポッポ`, 'happy', 'bounce');
+  } else {
+    let errMsg = '❌ キーが無効か接続できませんでした';
+    if(testRes) {
+      try {
+        const errData = await testRes.json();
+        const detail = errData?.error?.message || testRes.status;
+        errMsg = `❌ エラー：${detail}`;
+      } catch(e) { errMsg = `❌ HTTPエラー：${testRes.status}`; }
+    } else {
+      errMsg = '❌ 通信エラー（CORSまたはネットワーク）';
+    }
+    statusEl.textContent = errMsg;
+  }
+});
+
+document.getElementById('settings-clear-key').addEventListener('click', () => {
+  if(confirm('APIキーを削除しますか？')) {
+    geminiKey = '';
+    localStorage.removeItem(API_KEY_STORAGE);
+    document.getElementById('api-key-input').value = '';
+    document.getElementById('api-status').textContent = '🗑️ 削除しました';
+    updateApiIndicator();
+  }
+});
+
+// Override teach to trigger Gemini suggest
+const _origTeachWord = teachWord;
+window.teachWord = function(word, meaning) {
+  const result = _origTeachWord(word, meaning);
+  if(result && hasApiKey()) geminiSuggestWords(word, meaning);
+  return result;
+};
+
+// Auto speech
+setInterval(async () => {
+  if(S.vocab.length > 0 && Math.random() < 0.18 + S.whim/300) {
+    if(hasApiKey()) {
+      await geminiSpeak();
+    } else {
+      const line = buildSpeech();
+      speak(line, getSpeechMood());
+    }
+  }
+}, 7000);
+
+// ===== INIT =====
+// Preview canvas on name screen
+renderHato('preview-canvas', 'normal', 0, 80, 80);
+
+load();
+updateApiIndicator();
+if(S.name) startGame();
+</script>
+</body>
+</html>
